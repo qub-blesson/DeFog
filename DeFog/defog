@@ -1,0 +1,592 @@
+#!/bin/bash
+
+#########################################################################################################################
+# CSC4006 - Research And Development Project
+# Developed by: Jonathan McChesney (MEng Computer Games Development)
+# Queen's University Belfast
+#
+# Component: defog.sh
+#	
+# How to run: sh defog .
+#
+# How to view help: sh defog -?
+#
+# Purpose: This component handles user input, as well as sourcing the configuration file. This script presents the user
+#			with a series of on screen options which the user can interact with using numeric input to select the necessary 
+#			parameters for the deployment pipeline, TPI environment variables and fog application to benchmark. This script
+#			also displays the Help and FAQ section. The defogexecute.sh script is invoked and sourced by this component.
+#			This allows the defogexecute.sh script access to the configuration file and user input variables. 
+#
+#########################################################################################################################
+
+# link local address to the config file
+source ~/Documents/configs/config.sh
+
+# create local variables of config variables
+cloudaddress=$cloudaddress
+clouduser=$clouduser
+edgeaddress1=$edgeaddress1
+edgeaddress2=$edgeaddress2
+edgeuser1=$edgeuser1
+edgeuser2=$edgeuser2
+awskey=$awskey
+cloudpublicip=$cloudpublicip
+configslocation=~/Documents/configs/*
+configfilelocation=~/Documents/configs/config.sh
+
+users=5
+ramp_up=0
+test_duration=300
+
+# help function that displays commandline help to the user
+function HELP {
+	echo "  _    _      _           ";
+	echo " | |  | |    | |        _ ";
+	echo " | |__| | ___| |_ __   (_)";
+	echo " |  __  |/ _ \ | '_ \     ";
+	echo " | |  | |  __/ | |_) |  _ ";
+	echo " |_|  |_|\___|_| .__/  (_)";
+	echo "               | |        ";
+	echo "               |_|        ";
+
+
+    cat <<HELP
+	
+	HELP: DeFog: Demystifying Fog Systems Interaction via Container based benchmarking [OPTION...]
+	DeFog allows you to build and run applications depyloed on the Edge and Cloud through container based benchmarking, 
+	please select the desired environment as well as the application or system to benchmark.
+	
+	Run Defog using:
+	$ sh defog
+	
+	Environments:
+	- Run Benchmarks on both Cloud and Edge
+	- Run Benchmarks on Cloud Only
+	- Run Benchmarks on Edge Only
+
+	Pre-Setup Edge Devices:
+	- Odroid XU4
+	- Raspberry Pi
+
+	Actions:
+	- Run all system benchmarks
+	- Runs small and large weight downloads test
+	- Test large file create/remove speed
+	- Run Sysbench
+	- Run UnixBench
+	- Delete temporary files
+	- Run Simple System Benchmarks
+	- No actions
+
+	Applications Benchmarks:
+	- Run Yolo
+	- Run Pocket Sphinx
+	- Run Aeneas
+	- Build and Run iPokeMon
+	- Run iPokeMon
+	- Run FogLAMP
+	- No Applications
+
+	FAQ: 
+
+	Question 1: What is DeFog?
+	
+	Answer 1: DeFog is a benchmarking method that builds and runs containerised fog 
+	applications on the Edge and the Cloud. DeFog also allows for system 
+	benchmarks to be generated.
+
+	Question 2: What is the difference between the Edge and the Cloud.
+	
+	Answer 2: The Edge is a more versatile system than the Cloud, that makes use of 
+	Edge nodes such as routers and swithces that have a limited availability 
+	of hardware but are geographically closer to end user devices such as 
+	laptops and smartphones than the Cloud.
+
+	Question 3: What applications can I benchmark?
+	
+	Answer 3: Currently DeFog supports a range of applications with different workloads: 
+	Deep learning object classification tool YOLO, speech to text generator 
+	PocketSphinx, forced alignment tool Aeneas, IoT Edge gateway application 
+	FogLAMP and GPS based VR based mobile online game iPokemon.
+
+	Question 4: How can I run DeFog?
+	
+	Answer 4: You can run DeFog using bash: '$ sh defog' or '$ bash defog' 
+	and following the on screen prompts.
+
+	Question 5: What is a DeFog pipeline?
+	
+	Answer 5: A pipeline is the series of tasks performed by DeFog on the Edge, Cloud 
+	or Both. The pipeline controls the flow of data and where the application 
+	will be built, run and benchmarked.
+	
+HELP
+}
+
+# utility function to determine the edge device address (i.e. ipaddress) based on user input
+function edgeaddress_selector {
+	if [ "$environment" == "-e" ] || [ "$environment" == "-b" ];
+	then
+		while true; do
+			echo ""
+			echo -e "Please select your edge node device:"
+				echo ""
+				echo "0. Odroid XU4"
+				echo "1. Raspberry Pi"
+				echo ""
+		  read -p "What actions would you like to run:[0,1] " ANS
+		  case $ANS in 
+			'0') 
+			   edgeaddress=$edgeaddress1
+			   edgeuser=$edgeuser1
+			   break;;
+			'1') 
+			   edgeaddress=$edgeaddress2
+			   edgeuser=$edgeuser2
+			   break;;  	
+			*) 
+			   echo "Wrong input, try again";;
+		  esac
+		done
+	fi
+}
+
+# utility function to determine the platform actions to be perfomed based on user input
+function actions_user_input {
+while true; do
+	echo "Actions:"
+		echo ""
+		echo "0. Run DeFog Platform Benchmarks"
+		echo "1. Run DeFog, Sysbench & UnixBench Platform Benchmarks"
+		echo "2. Run Network Benchmark"
+		echo "3. Run I/O Benchmark"
+		echo "4. Run Sysbench"
+		echo "5. Run UnixBench"
+		echo "6. Remove Docker Containers & DeFog Architecture"
+		echo "7. None"
+		echo ""
+  read -p "What actions would you like to run:[0,1,2,3,4,5,6,7] " ANS
+  case $ANS in 
+	'0') 
+       actions="-g"   
+	   break;;
+    '1') 
+       actions="-a"
+       break;;
+    '2') 
+       actions="-d"
+       break;;
+	'3') 
+       actions="-f" 
+       break;;  
+	'4') 
+       actions="-s"
+       break;;
+    '5') 
+       actions="-u"
+       break;;
+	'6') 
+       actions="-x"
+	   break;;
+	'7') 
+       actions="-n"  
+       break;;   	
+    *) 
+       echo "Wrong input, try again";;
+  esac
+done
+}
+
+# utility function to determine the platform pipeline based on user input
+function env_user_input {
+while true; do
+	echo "Environments:"
+		echo ""
+		echo "0. Cloud Only"
+		echo "1. Edge Only"
+		echo "2. Cloud & Edge"
+		echo ""
+  read -p "What environment would you like to benchmark: [0,1,2] " ANS
+  case $ANS in 
+    '0') 
+       environment="-c"
+       break;;
+    '1') 
+       environment="-e" 
+       break;;
+	'2') 
+       environment="-b"
+       break;;   
+    *) 
+       echo "Wrong input, try again";;
+  esac
+done
+}
+
+# utility function to determine the platform applications to be benchmarked based on user input
+function applications_user_input {
+while true; do
+	echo -e
+	echo -e "Fog Applications:"
+		echo ""
+		echo "0. Yolo"
+		echo "1. PocketSphinx"
+		echo "2. Aeneas"
+		echo "3. iPokeMon (build and run)"
+		echo "4. iPokeMon (run benchmarks only)"
+		echo "5. FogLAMP"
+		echo "6. None"
+		echo ""
+  read -p "What Applications would you like to benchmark: [0,1,2,3,4,5,6] " ANS
+  case $ANS in 
+    '0') 
+       applications="-y"
+       break;;
+    '1') 
+       applications="-p" 
+       break;;
+	'2') 
+       applications="-j"
+       break;;
+	'3') 
+       applications="-i"
+       break;;	   
+	'4') 
+       applications="-k"
+       break;;   
+	'5') 
+       applications="-l"
+       break;;
+	'6') 
+       applications="-m"
+       break;; 	   
+    *) 
+       echo "Wrong input, try again";;
+  esac
+done
+}
+
+# utility function to determine the platform applications to be benchmarked on the cloud/edge pipeline based on user input
+function applications_cloud_edge_user_input {
+while true; do
+	echo -e
+	echo -e "Fog Applications:"
+		echo ""
+		echo "0. Yolo"
+		echo "1. PocketSphinx"
+		echo "2. Aeneas"
+		echo "3. None"
+		echo ""
+  read -p "What Applications would you like to benchmark: [0,1,2,3] " ANS
+  case $ANS in 
+    '0') 
+       applications="-y"
+       break;;
+    '1') 
+       applications="-p" 
+       break;;
+	'2') 
+       applications="-j"
+       break;;
+	'3') 
+       applications="-m"
+       break;; 	   
+    *) 
+       echo "Wrong input, try again";;
+  esac
+done
+}
+
+function test_users_user_input {
+while true; do
+	echo -e
+	echo -e "Please select the number of users to simulate:"
+		echo ""
+		echo "0. 1"
+		echo "1. 2"
+		echo "2. Default (5)"
+		echo "3. 10"
+		echo "4. 25"
+		echo "5. 50"
+		echo "6. 100"
+		echo "7. 250"
+		echo ""
+  read -p "How many users/threads would you like to start: [0,1,2,3,4,5,6,7] " ANS
+  case $ANS in 
+    '0') 
+       users=1
+       break;;
+    '1') 
+       users=2
+       break;;
+	'2') 
+       users=5
+       break;;
+	'3') 
+       users=10
+       break;;	   
+	'4') 
+       users=25
+       break;;   
+	'5') 
+       users=50
+       break;;
+	'6') 
+       users=100
+       break;; 	  
+	'7') 
+       users=250
+       break;; 	   
+    *) 
+       echo "Wrong input, try again";;
+  esac
+done
+}
+
+function test_duration_user_input {
+while true; do
+	echo -e
+	echo -e "Please select the test duration in seconds:"
+		echo ""
+		echo "0. 60"
+		echo "1. 120"
+		echo "2. Default (300)"
+		echo "3. 600"
+		echo "4. 900"
+		echo ""
+  read -p "How long would you like to run the test: [0,1,2,3,4] " ANS
+  case $ANS in 
+    '0') 
+       test_duration=60
+       break;;
+    '1') 
+       test_duration=120
+       break;;
+	'2') 
+       test_duration=300
+       break;;
+	'3') 
+       test_duration=600
+       break;;	   
+	'4') 
+       test_duration=900
+       break;;      
+    *) 
+       echo "Wrong input, try again";;
+  esac
+done
+}
+
+function test_ramp_up_user_input {
+while true; do
+	echo -e
+	echo -e "Please select the test ramp up period in seconds:"
+		echo ""
+		echo "0. Default (0)"
+		echo "1. 10"
+		echo "2. 30"
+		echo "3. 60"
+		echo "4. 120"
+		echo ""
+  read -p "How long would you like to ramp up the threads/users for: [0,1,2,3,4] " ANS
+  case $ANS in 
+    '0') 
+       ramp_up=0
+       break;;
+    '1') 
+       ramp_up=10
+       break;;
+	'2') 
+       ramp_up=30
+       break;;
+	'3') 
+       ramp_up=60
+       break;;	   
+	'4') 
+       ramp_up=120
+       break;;      
+    *) 
+       echo "Wrong input, try again";;
+  esac
+done
+}
+
+# utility function to print sepeartor/formatter line
+function seperator {
+echo -e "*****************************************************************************" | tee -a $verbose_filename.txt
+}
+
+# print and display the ascii header
+function display_ascii_header {
+
+	echo "  ___      ___            _ ";
+	echo " |   \ ___| __|__  __ _  (_)";
+	echo " | |) / -_) _/ _ \/ _\` |  _ ";
+	echo " |___/\___|_|\___/\__, | (_)";
+	echo "                  |___/     ";
+	echo ""
+	echo -e "DeFog: " | tee $verbose_filename.txt
+	echo -e "	Demystifying Fog Systems Interaction via Container based benchmarking." | tee $verbose_filename.txt
+	echo -e "	Created by: Jonathan McChesney, student at Queen's University Belfast" | tee -a $verbose_filename.txt
+	echo -e "	CSC4006 Final Year Research and Development Project" | tee -a $verbose_filename.txt
+	echo -e "" | tee -a $verbose_filename.txt
+	echo -e "*****************************************************************************" | tee -a $verbose_filename.txt
+	echo -e "*****************************************************************************" | tee -a $verbose_filename.txt
+	echo -e "" | tee -a $verbose_filename.txt
+}
+
+# create the various results file/filenames (data file, verbose data file, jmeter file, taurus file)
+function create_result_files {
+	verbose_filename=result
+	metrics_verbose_filename=metrics
+	jmeter_filename=jmeter
+	taurus_filename=taurus
+	filenumber=""
+	
+	cd results
+	if [[ -e $verbose_filename.txt ]] ; then
+		i=0
+		while [[ -e $verbose_filename-$i.txt ]] ; do
+			let i++
+		done
+		filenumber=$i
+		verbose_filename=$verbose_filename-$i
+	fi
+	if [[ -e $metrics_verbose_filename.txt ]] ; then
+		i=0
+		while [[ -e $metrics_verbose_filename-$i.txt ]] ; do
+			let i++
+		done
+		filenumber=$i
+		metrics_verbose_filename=$metrics_verbose_filename-$i
+	fi
+	if [[ -e $jmeter_filename.csv ]] ; then
+		i=0
+		while [[ -e $jmeter_filename-$i.csv ]] ; do
+			let i++
+		done
+		filenumber=$i
+		jmeter_filename=$jmeter_filename-$i
+	fi
+	if [[ -e $taurus_filename.csv ]] ; then
+		i=0
+		while [[ -e $taurus_filename-$i.csv ]] ; do
+			let i++
+		done
+		filenumber=$i
+		taurus_filename=$taurus_filename-$i
+	fi
+	cd ../
+}
+
+function setup_jmeter {
+
+	if [ "$applications" == "-i" ] || [ "$applications" == "-k" ];
+	then
+		test_users_user_input
+		test_duration_user_input
+		test_ramp_up_user_input
+	fi
+}
+
+function display_help {
+	eval get_help=$1
+	
+	if [ "$get_help" == "-?" ] || [ "$applications" == "-h" ];
+	then
+		HELP
+		exit 2
+	fi
+}
+
+# application main
+
+	create_result_files
+	display_ascii_header
+	
+	display_help $1
+
+	
+	env_user_input
+		
+	if [ "$environment" == "-c" ]; # cloud only
+	then
+		echo ""
+		echo -e "Cloud Only Benchmarks: " | tee -a $verbose_filename.txt
+		seperator
+		echo "" | tee -a $verbose_filename.txt
+		
+		actions_user_input
+		applications_user_input
+		setup_jmeter
+		
+	fi	
+	
+	if [ "$environment" == "-e" ]; # edge only
+	then	
+		echo ""
+		echo -e "Edge Only Benchmarks: " | tee -a $verbose_filename.txt
+		seperator
+		echo "" | tee -a $verbose_filename.txt		
+		
+		edgeaddress_selector
+		actions_user_input
+		applications_user_input
+		setup_jmeter
+		
+	fi	
+	
+	if [ "$environment" == "-b" ]; # cloud/edge
+	then	
+		echo ""
+		echo -e "Edge/Cloud Benchmarks: " | tee -a $verbose_filename.txt
+		seperator
+		echo "" | tee -a $verbose_filename.txt
+				
+		edgeaddress_selector
+		actions="-n"
+		applications_cloud_edge_user_input
+		
+	fi
+	
+	echo -e
+	
+	(
+		export actions
+		export environment
+		export applications
+		export users
+		export ramp_up
+		export test_duration
+		export filenumber
+		export verbose_filename
+		export metrics_verbose_filename
+		export jmeter_filename
+		export taurus_filename
+		export cloudaddress
+		export clouduser
+		export edgeaddress
+		export edgeaddress1
+		export edgeaddress2
+		export edgeuser
+		export edgeuser1
+		export edgeuser2
+		export awskey
+		export cloudpublicip
+		export configslocation
+		export configfilelocation
+		
+		source ./defogexecute
+	)
+
+# expect user input for displaying helphelp
+while getopts :h: opt; do
+    case "$opt" in
+        h)
+            HELP
+            ;;	
+        ?)
+            HELP
+            ;;
+    esac
+done

@@ -1,0 +1,2 @@
+lxc.cgroup.cpu.cfs_quota_us = 1000000
+lxc.cgroup.memory.limit_in_bytes = 256M

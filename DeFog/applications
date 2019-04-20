@@ -1,0 +1,213 @@
+#!/bin/bash
+
+#########################################################################################################################
+# CSC4006 - Research And Development Project
+# Developed by: Jonathan McChesney (MEng Computer Games Development)
+# Queen's University Belfast
+#
+# Component: defogexecute.sh
+#
+# Purpose: This script is passed to the Cloud or Edge instance by the defogexecute.sh script. This component handles
+#			the execution of fog applications. This component determines which pipeline (Cloud Only, Edge Only or 
+#			Cloud-Edge Combined) to deploy and benchmark the fog application selected. The relevant docker run.sh 
+#			script is invoked as passed the application and platform ID variables.
+#
+#########################################################################################################################
+
+# remove docker images and contianers
+function remove_docker_images_and_containers {
+	docker stop $(docker ps -aq)
+	docker rm $(docker ps -aq)
+	docker rmi $(docker images -q)
+}
+
+# remove docker contianers
+function remove_docker_containers {
+	docker stop $(docker ps -aq)
+	docker rm $(docker ps -aq)
+}
+
+# run and enter ipokemon container on cloud only or edge only platform
+function run_docker_ipokemon {
+	echo -n Running ipokemon docker container...
+	chmod 777 enter.sh
+	./enter.sh
+	echo -n DONE entering iPokeMon docker container
+}
+
+# run an application container, passing the path, application name, run script (run.sh or runEdge.sh), the application ID and the platform ID as parameters
+function run_docker_app {
+
+	# evaluate parameters
+	eval path="$1"
+	eval applicationname="$2"
+	eval runscript="$3"
+	eval currentapp="$4"
+	eval currentplatform="$5"
+
+	# navigate to the specified path
+	cd ${path}
+	
+	echo -n -e Running ${applicationname} container...
+
+	# invoke the specified run script for a fog application on the Cloud or Edge
+	. ${runscript} ${currentapp} ${currentplatform}
+	
+	echo -n -e DONE running ${applicationname}
+	echo -e
+}
+
+# utility function to print sepeartor/formatter line. This is used to format the result file and terminal output.
+function seperator {
+echo -e "*****************************************************************************" | tee -a $filename.txt
+}
+
+# run the application script on the cloud for the cloud/edge pipeline
+function bothcloudbench {
+	# output to the terminal and results file using tee
+	echo -e "Cloud/Edge - Cloud applications benchmarks: " | tee $filename.txt
+	seperator
+	
+	# $ test is used to determine if the user value has been provided to invoke a specic fog application
+	# the run_docker_app function is invoked and provided the path, application name, run script, application id and platform ID (1 = Cloud-Edge Cloud instance)
+	test $run_yolo && run_docker_app "bothcloudyolobuild/YOLO/bothclouddocker" "YOLO-Edge/Cloud-Cloud-instance" "run.sh" "0" "1"
+	test $run_psphinx && run_docker_app "bothcloudpsphinxbuild/PocketSphinx/bothclouddocker" "PocketSphinx-Edge/Cloud-Cloud-instance" "run.sh" "1" "1"
+	test $run_aeneas && run_docker_app "bothcloudaeneasbuild/Aeneas/bothclouddocker" "Aeneas-Edge/Cloud-Cloud-instance" "run.sh" "2" "1"
+	
+}
+
+# run the application script on the edge for the cloud/edge pipeline
+function bothedgebench {
+	# output to the terminal and results file using tee
+	echo -e "Cloud/Edge - Edge applications benchmarks: " | tee $filename.txt
+	seperator
+	
+	# $ test is used to determine if the user value has been provided to invoke a specic fog application
+	# the run_docker_app function is invoked and provided the path, application name, run script, application id and platform ID (2 = Cloud-Edge Edge instance)
+	test $run_yolo && run_docker_app "bothedgeyolobuild/YOLO/bothedgedocker" "YOLO-Edge/Cloud-Edge-instance" "runedge.sh" "0" "2"
+	test $run_psphinx && run_docker_app "bothedgepsphinxbuild/PocketSphinx/bothedgedocker" "PocketSphinx-Edge/Cloud-Edge-instance" "runedge.sh" "1" "2"
+	test $run_aeneas && run_docker_app "bothedgeaeneasbuild/Aeneas/bothedgedocker" "Aeneas-Edge/Cloud-Edge-instance" "runedge.sh" "2" "2"
+	
+}
+
+# run the application script on the edge for the edge only pipeline
+function edgebench {
+	# output to the terminal and results file using tee
+	echo -e "Edge applications benchmarks: " | tee $filename.txt
+	seperator
+	
+	# $ test is used to determine if the user value has been provided to invoke a specic fog application
+	# the run_docker_app function is invoked and provided the path, application name, run script, application id and platform ID (0 = Edge Only instance)
+	# iPokemon and Aeneas are also run on these pipelines. The run_docker_ipokemon is executed if the user provides input to benchamrk iPokemon.
+	test $run_yolo && run_docker_app "yolobuild/YOLO/docker" "YOLO" "runedge.sh" "0" "0"
+	test $run_psphinx && run_docker_app "psphinxbuild/PocketSphinx/docker" "PocketSphinx" "runedge.sh" "1" "0"
+	test $run_aeneas && run_docker_app "aeneasbuild/Aeneas/docker" "Aeneas" "runedge.sh" "2" "0"
+	test $run_ipokemon && run_docker_ipokemon
+	test $run_foglamp && run_docker_app "foglampbuild/FogLAMP/docker" "FogLAMP" "runedge.sh" "3" "0"
+
+}
+
+# run the application script on the cloud for the cloud only pipeline
+function cloudbench {
+	# output to the terminal and results file using tee
+	echo -e "Cloud applications benchmarks: " | tee $filename.txt
+	seperator
+	
+	# $ test is used to determine if the user value has been provided to invoke a specic fog application
+	# the run_docker_app function is invoked and provided the path, application name, run script, application id and platform ID (0 = Cloud Only instance)
+	# iPokemon and Aeneas are also run on these pipelines. The run_docker_ipokemon is executed if the user provides input to benchamrk iPokemon.
+	test $run_yolo && run_docker_app "yolobuild/YOLO/docker" "YOLO" "run.sh" "0" "0"
+	test $run_psphinx && run_docker_app "psphinxbuild/PocketSphinx/docker" "PocketSphinx" "run.sh" "1" "0"
+	test $run_aeneas && run_docker_app "aeneasbuild/Aeneas/docker" "Aeneas" "run.sh" "2" "0"
+	test $run_ipokemon && run_docker_ipokemon
+	test $run_foglamp && run_docker_app "foglampbuild/FogLAMP/docker" "FogLAMP" "run.sh" "3" "0"
+
+}
+
+# applications main function (This script is executed on the Cloud or Edge)
+function main {
+	# navigate to the main defog folder on the Cloud or Edge
+	cd defog 
+	
+	# update config folder privileges to prevent accidental mutation or deletion
+	chmod 400 configs
+	echo -e
+	
+	# environment/pipeline user input is provided by the sourced defog.sh and defogExecute.sh scripts. This is tested to determine what bench function to invoke for the current pipeline
+    test $run_cloud && cloudbench
+    test $run_edge && edgebench
+	test $run_both_cloud && bothcloudbench
+    test $run_both_edge && bothedgebench
+}
+
+# accept user input passed by defog bash script
+while getopts :cebz:adfsxulhngs:yipjmk opt; do
+    case "$opt" in
+        a)
+            run_downloads=true
+		    run_unixbench=true
+			run_sysbench=true
+			run_simple=true
+            ;;
+		c)
+			run_cloud=true
+			;;
+		b)
+			run_both_edge=true
+			;;
+		e)
+			run_edge=true
+			;;
+        d)
+            run_downloads=true
+            ;;
+        f)
+            
+            ;;
+		s) 	
+			run_sysbench=true
+			;;
+        x)
+            run_delete=true
+			remove_docker_containers
+            ;;
+		u)
+            run_unixbench=true
+            ;;
+		g)	
+			run_simple=true
+			;;
+		n)
+			;;	
+		z)
+			run_both_cloud=true
+			;;
+		i)	
+			build_ipokemon=true
+			run_ipokemon=true
+			;;
+		l)	
+			run_foglamp=true
+			;;		
+		j)	
+			run_aeneas=true
+			;;	
+		k)	
+			run_ipokemon=true
+			;;	
+		p)	
+			run_psphinx=true
+			;;	
+		y)
+            run_yolo=true
+            ;;	
+		m)
+			;;
+        ?)
+            HELP
+            exit 2
+            ;;
+    esac
+done
+
+main

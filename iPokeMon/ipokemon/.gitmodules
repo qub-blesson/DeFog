@@ -1,0 +1,3 @@
+[submodule "Application/iPokeMon-EdgeServer"]
+	path = Application/iPokeMon-EdgeServer
+	url = https://github.com/NanWang0024/iPokeMon-EdgeServer.git

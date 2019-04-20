@@ -1,0 +1,1 @@
+curl -X GET $1/foglamp/category

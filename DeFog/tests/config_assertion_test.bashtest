@@ -1,0 +1,34 @@
+# Test the config file have the correct declarations
+# to run all bash tests, ensure bashtest and grep dependencies are installed 
+# $ bashtest *.bashtest
+
+$ grep -F "cloudaddress=" ../configs/config.sh > /dev/null && echo "YES"
+YES
+
+$ grep -F "clouduser=" ../configs/config.sh > /dev/null && echo "YES"
+YES
+
+$ grep -F "cloudpublicip=" ../configs/config.sh > /dev/null && echo "YES"
+YES
+
+$ grep -F "edgeaddress1=" ../configs/config.sh > /dev/null && echo "YES"
+YES
+
+$ grep -F "edgeuser1=" ../configs/config.sh > /dev/null && echo "YES"
+YES
+
+$ grep -F "edgeaddress2=" ../configs/config.sh > /dev/null && echo "YES"
+YES
+
+$ grep -F "edgeuser2=" ../configs/config.sh > /dev/null && echo "YES"
+YES
+
+$ grep -F "awskey=" ../configs/config.sh > /dev/null && echo "YES"
+YES
+
+$ grep -F "edgeawskey=" ../configs/config.sh > /dev/null && echo "YES"
+YES
+
+$ grep -F "foglampaddress=" ../configs/config.sh > /dev/null && echo "YES"
+YES
+

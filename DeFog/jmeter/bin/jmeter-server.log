@@ -1,0 +1,12 @@
+2019-02-02 17:09:44,033 INFO o.a.j.u.JMeterUtils: Setting Locale to en_EN
+2019-02-02 17:09:44,341 INFO o.a.j.JMeter: Loading user properties from: user.properties
+2019-02-02 17:09:44,342 INFO o.a.j.JMeter: Loading system properties from: system.properties
+2019-02-02 17:09:44,343 ERROR o.a.j.JMeter: An error occurred: 
+java.lang.IllegalArgumentException: Unknown arg: C:\Users\jmcch\Documents\csc4006Gitlab\csc4006-EdgeBenchmarking\Experiments\FogBench\jmeter\bin\jmeter-n-r.cmd
+	at org.apache.jmeter.JMeter.initializeProperties(JMeter.java:829) ~[ApacheJMeter_core.jar:5.0 r1840935]
+	at org.apache.jmeter.JMeter.start(JMeter.java:453) [ApacheJMeter_core.jar:5.0 r1840935]
+	at jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method) ~[?:?]
+	at jdk.internal.reflect.NativeMethodAccessorImpl.invoke(Unknown Source) ~[?:?]
+	at jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(Unknown Source) ~[?:?]
+	at java.lang.reflect.Method.invoke(Unknown Source) ~[?:?]
+	at org.apache.jmeter.NewDriver.main(NewDriver.java:245) [ApacheJMeter.jar:5.0 r1840935]

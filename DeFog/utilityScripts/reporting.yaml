@@ -1,0 +1,9 @@
+reporting:
+- module: final-stats           # module type specified for Taurus bzt testing
+  summary: true                 # overall samples count and percent of failures
+  percentiles: true             # display average times and percentiles
+  summary-labels: true          # provides list of sample labels, status, percentage of completed, avg time and errors
+  failed-labels: true           # provides list of sample labels with failures
+  test-duration: true           # provides test duration
+  dump-xml: taurusreport.xml    # output xml filename
+  dump-csv: taurusreport.csv    # output csv filename

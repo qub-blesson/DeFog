@@ -1,0 +1,475 @@
+#!/bin/bash
+
+#########################################################################################################################
+# CSC4006 - Research And Development Project
+# Developed by: Jonathan McChesney (MEng Computer Games Development)
+# Queen's University Belfast
+#
+# Component: defogexecute.sh
+#
+# Purpose: This script is passed to the Cloud or Edge instance by the defogexecute.sh script. This component handles
+#			the building of fog applications and execution of platform benchmarks as well as TPI integration with
+#			tools such as Unixbench and Sysbench. This component determines what pipeline (Cloud Only, Edge Only or 
+#			Cloud-Edge Combined) to run the action benchmark processes on. The docker build.sh script is invoked by
+#			this component.
+#
+#########################################################################################################################
+
+# run simple benchmarks for the current running platform to generate CPU, network and IO statistics
+function simple_benchmark {
+
+    today=$(date +"%m/%d/%Y")
+	echo -e "Starting Simple benchmarks..."
+    
+	simple_CPU_benchmark
+
+    simple_IO_benchmark
+
+	simple_network_benchmark
+	
+	display_info | tee -a $filename.txt
+
+}
+
+# format and output system benchmark information using cat to display on screen to the user
+function display_info {
+cat <<INFO
+
+	Run Date: $today 
+	*********************************
+	CPU Model Name: $cpuNume
+	Number of Cores: $cpuCores
+	CPU Frequency (if available on platform): $cpuFrequency MHz
+	System Uptime: $sysUptime
+	Small Weights unzip rate: $smallWeights
+	Large Weights dl rate: $downloadTest
+	Sys I/O Rate: $inputOutput
+	*********************************
+
+INFO
+}
+
+# Run DeFog system CPU system benchmarks
+function simple_CPU_benchmark {
+	local zippedFile=zipFile
+	
+	# Use awk to determine the CPU model name, system up time, cpu frequency and number of cores (using /proc/ and system stats
+    cpuNume=$( awk -F: '/model name/ {name=$2} END {print name}' /proc/cpuinfo )
+	sysUptime=$(uptime|awk '{ $1=$2=$(NF-6)=$(NF-5)=$(NF-4)=$(NF-3)=$(NF-2)=$(NF-1)=$NF=""; print }')
+    cpuFrequency=$( awk -F: ' /cpu MHz/ {cpuFrequency=$2} END {print cpuFrequency}' /proc/cpuinfo )
+    cpuCores=$( awk -F: '/model name/ {core++} END {print core}' /proc/cpuinfo )
+	
+	# use dd command line utilities to create an asset file I/O test
+	echo  "Benching System CPU..."
+    dd if=/dev/urandom of=$zippedFile bs=1024 count=20000 >>/dev/null 2>&1
+	echo -e "Unzipping small weights file ..."
+	
+	# unzip a large weights file and record the time taken to unzip
+    smallWeights=$( (/usr/bin/time -f "%es" tar cfj $zippedFile.bz2 $zippedFile) 2>&1 )
+	
+	# remove temporary files
+    rm -f zipFile*
+    echo -e DONE - running CPU benchmarks
+		
+}
+
+# Invoke the IO system benchmarks and echo update statements
+function simple_IO_benchmark {
+    local benchmarkFile=benchmarker__$$
+
+	echo -e "Benching System Input & Output ... "
+    inputOutput=$( ( dd if=/dev/zero of=$benchmarkFile bs=64k count=16k conv=fdatasync && rm -f $benchmarkFile ) 2>&1 | awk -F, '{inputOutput=$NF} END { print inputOutput}' )
+    echo -e DONE  running IO benchmarks
+}
+
+# Invoke the network benchmark benchmark function and echo status statements
+function simple_network_benchmark {
+	echo -e "Benching network download speed, downloading large weights file... "
+    downloadTest=$( _downloadTest https://pjreddie.com/media/files/yolov3.weights )
+    echo -e DONE network benchmark
+}
+
+# Network benchmark - Use wget, date and AWK to leverage command line utilities to capture network metrics. Output to file using tee
+function _downloadTest {
+
+	# initialise timer start
+	local start=$(date +%s.%N)
+
+	# use wget to download the file, awk command line utilities are used to create a small program to parse the file and pass the relevant parameters to determine the download rate, output using tee
+    wget -O /dev/null "$1" 2>&1 | awk '/\/dev\/null/ {downloadRate=$3 $4} END {gsub(/\(|\)/,"",downloadRate); print downloadRate}' | tee -a $filename.txt
+	
+	# end time and calculate the diffeerence
+	local end=$(date +%s.%N)
+	local runtime=$( echo "$end - $start" | bc -l )
+		
+	# output using tee	
+	echo -e Network test: completed in $runtime secs | tee -a $filename.txt
+}
+
+# Network benchmarking utlity function to invoke the download test function and passing a weights file as parameter
+function download_benchmark {
+    echo -e "Downloading file(s) from $1 ... "
+    _downloadTest "$2"
+}
+
+# Network benchmarking utility function to set a weights parameter
+function downloads_benchmark {
+    echo -e "Downloading weights files ... "
+
+    download_benchmark "yolov3 weights" \
+        https://pjreddie.com/media/files/yolov3.weights
+
+    download_benchmark "tiny weights" \
+		https://pjreddie.com/media/files/tiny.weights
+
+}
+
+# I/O benchmark test to create a large asset file using dd and commandline utilities
+function instantiate_file {
+    echo -e Creating file ...
+	local start=$(date +%s.%N)
+    dd if=/dev/urandom of=large_file bs=1024 count=102400
+    echo -e DONE - creating file
+	local end=$(date +%s.%N)
+	local runtime=$( echo "$end - $start" | bc -l )
+		
+	echo  Creating large file speed: completed in $runtime secs | tee -a $filename.txt
+	
+	remove_file
+}
+
+# benchmark utility function to remove the large asset file I/O test
+function remove_file {
+	echo -e Removing file ...
+	local start=$(date +%s.%N)
+	rm large_file
+    echo -e DONE - removing file
+	local end=$(date +%s.%N)
+	local runtime=$( echo "$end - $start" | bc -l )
+		
+	echo  Removing large file speed: completed in $runtime secs | tee -a $filename.txt
+}
+
+# install unixbench if not already installed using wget and tar to unzip
+function install_unixbench {
+    test -d UnixBench && return
+    apt-get install build-essential
+
+    local file_ver=UnixBench5.1.3
+	echo -e "Getting UnixBench..."
+ 	wget -N https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/teddysun/UnixBench5.1.3.tgz
+	tar xvfz $file_ver.tgz
+}
+
+# install sysbench if not currently present
+function install_sysbench {
+    test -d sysbench && return
+	sudo apt-get install sysbench
+}
+
+# Run TPI Unixbench platform tests and output to file using tee
+function benchmark_unixbench {
+    install_unixbench
+
+    pushd UnixBench > /dev/null
+    ./Run index 
+    popd > /dev/null | tee -a $filename.txt
+}
+
+# Run TPI Sysbench platform tests and output to file using tee
+function benchmark_sysbench {
+    echo -e Installing sysbench...
+
+	install_sysbench
+	
+	echo -e Benchmarking using sysbench...
+	sysbench --test=cpu --cpu-max-prime=20000 run | tee -a $filename.txt
+}
+
+# stop and remove all docker images and containers
+function remove_docker_images_and_containers {
+	docker stop $(docker ps -aq)
+	docker rm $(docker ps -aq)
+	docker rmi $(docker images -q)
+}
+
+# stop and remove all docker containers
+function remove_docker_containers {
+	docker stop $(docker ps -aq)
+	docker rm $(docker ps -aq)
+}
+
+# utility clean function to remove all defog asset, config, results and application folders, files and containers
+function delete_utility {
+    echo Deleting cleanup files ...
+    rm -f large_file
+	rm -f benchmarker__*
+    rm -rf zipFile*
+	rm -rf UnixBench*
+	rm -rf yolobuild
+	rm -rf bothcloudyolobuild
+	rm -rf bothedgeyolobuild
+	rm -rf bothcloudpsphinxbuild
+	rm -rf bothedgepsphinxbuild
+	rm -rf bothcloudaeneasbuild
+	rm -rf bothedgeaeneasbuild
+	rm -rf psphinxbuild
+	rm -rf ipokemonbuild
+	rm -rf aeneasbuild
+	rm -rf foglampbuild
+	rm -rf assets
+    echo OK
+	
+	echo Removing docker containers...
+		remove_docker_containers &>/dev/null
+	echo OK
+}
+
+# function to build a docker application, the build path, name and application name are passed in as parameters, this will always attempt to build the application
+# regardless if the directory already exists
+function build_docker_app_always {	
+
+	# accepts input parameters
+	eval buildpath = "$1"
+	eval buildname = "$2"
+	eval applicationname = "$3"
+	
+	# navigate to the build directory
+	echo Entering ${buildname}...
+	mkdir ${buildname}
+	cd ${buildname}
+
+	# pull down the docker file sub tree for a fog application
+	echo Pulling down ${applicationname} docker file...
+	sudo git init 
+	sudo git remote add -f origin https://github.com/qub-blesson/DeFog.git
+	sudo git config core.sparsecheckout true
+	echo ${buildpath} >> .git/info/sparse-checkout
+	sudo git pull https://github.com/qub-blesson/DeFog.git master
+	
+	echo ${buildpath}...
+	cd ${buildpath}
+
+	echo Building ${applicationname} docker image...
+	
+	# Assign correct privileges to the execute script
+	chmod 777 execute.sh
+	
+	# execute the build script
+	time . build.sh 
+	echo DONE
+	
+}
+
+# function to build a docker application, the build path, name and application name are passed in as parameters
+function build_docker_app {
+	
+	# accepts input parameters
+	eval buildpath="$1"
+	eval buildname="$2"
+	eval applicationname="$3"
+
+	# create a directory var that corresponds to the build name to be created on the Edge or Cloud
+	local DIRECTORY=${buildname}
+
+	# if the directory doesnt exist, then build the appication by pulling down the sub tree from the GitLab repository, and building
+	if [ ! -d "$DIRECTORY" ]; 
+	then
+		# navigate to the build directory
+		echo Entering ${buildname}...
+		mkdir ${buildname}
+		cd ${buildname}
+
+		# pull down the docker file sub tree for a fog application
+		echo Pulling down ${applicationname} docker file...
+		sudo git init 
+		sudo git remote add -f origin https://github.com/qub-blesson/DeFog.git
+		sudo git config core.sparsecheckout true
+		echo ${buildpath} >> .git/info/sparse-checkout
+		sudo git pull https://github.com/qub-blesson/DeFog.git master
+		
+		echo ${buildpath}...
+		cd ${buildpath}
+
+		echo Building ${applicationname} docker image - console logs suppressed...
+		echo Please wait as this may take a few minutes...
+		
+		# Assign correct privileges to the execute script
+		chmod 777 execute.sh
+		
+		# execute the build script
+		time . build.sh
+		echo DONE	
+	fi
+	
+}
+
+# Output a sepeartor line to format results file and terminal, uses the tee package and appends to the results file
+function seperator {
+	echo -e "*****************************************************************************" | tee -a $filename.txt
+}
+
+# Utility system actions and application build function for the Cloud-Edge pipeline, this function is invoked for the Cloud instance
+function benchcloudinstance {
+
+	# output to verbose file and console using tee
+	echo -e "Cloud/Edge - Cloud actions and system benchmarks: " | tee $filename.txt
+	seperator
+	
+	echo here
+	echo $run_yolo
+	
+	# Run the relevant fog application build on the Cloud-Edge pipeline - Cloud instance, passing the path, build name and application name as parameters
+	test $run_yolo && build_docker_app "YOLO/bothclouddocker/" "bothcloudyolobuild" "YOLO-Cloud/Edge-Cloud-instance"
+	test $run_psphinx && build_docker_app "PocketSphinx/bothclouddocker/" "bothcloudpsphinxbuild" "PocketSphinx-Cloud/Edge-Cloud-instance"
+	test $run_aeneas && build_docker_app "Aeneas/bothclouddocker/" "bothcloudaeneasbuild" "Aeneas-Cloud/Edge-Cloud-instance"
+	
+}
+
+# Utility system actions and application build function for the Cloud-Edge pipeline, this function is invoked for the Edge instance
+function benchedgeinstance {
+	
+	# output to verbose file and console using tee
+	echo -e "Cloud/Edge - Edge actions and system benchmarks: " | tee $filename.txt
+	seperator
+	
+	# Run the relevant fog application build on the Cloud-Edge pipeline - Edge instance, passing the path, build name and application name as parameters
+	test $run_yolo && build_docker_app "YOLO/bothedgedocker/" "bothedgeyolobuild" "YOLO-Cloud/Edge-Edge-instance"
+	test $run_psphinx && build_docker_app "PocketSphinx/bothedgedocker/" "bothedgepsphinxbuild" "PocketSphinx-Cloud/Edge-Edge-instance"
+	test $run_aeneas && build_docker_app "Aeneas/bothedgedocker/" "bothedgeaeneasbuild" "Aeneas-Cloud/Edge-Edge-instance"
+	
+}
+
+# Utility system actions and application build function for the Cloud and Edge Only pipelines
+function bench {
+	
+	# output to verbose file and console using tee
+	if [ "$run_cloud" ];
+	then
+		echo -e "Cloud actions and system benchmarks: " | tee $filename.txt
+	else
+		echo -e "Edge actions and system benchmarks: " | tee $filename.txt
+	fi
+	seperator
+
+	# run the relevant system benchmarks, based on user input
+	test $run_simple && simple_benchmark # DeFog CPU benchmarks etc.
+	test $run_downloads && downloads_benchmark # network benchmark
+	test $run_lfile && instantiate_file # I/O benchmark
+	test $run_sysbench && benchmark_sysbench # TPI Benchmark
+	test $run_unixbench && benchmark_unixbench # TPI Benchmark
+	
+	# Run the relevant fog application build on the Cloud or Edge Only pipeline, passing the path, build name and application name as parameters
+	test $run_yolo && build_docker_app "YOLO/docker/" "yolobuild" "YOLO"
+	test $run_psphinx && build_docker_app "PocketSphinx/docker" "psphinxbuild" "PocketSphinx"
+	test $run_aeneas && build_docker_app "Aeneas/docker/" "aeneasbuild" "Aeneas"
+	test $build_ipokemon && build_docker_app "iPokeMon/docker/" "ipokemonbuild" "iPokeMon"
+	test $run_foglamp && build_docker_app "FogLAMP/docker/" "foglampbuild" "FogLAMP"
+
+}
+
+# utility function to destruct and construct the defog directory architecture on the Cloud or Edge.
+function run_setup {
+
+	# create the defog folder if it doesnt already exist
+	mkdir -p defog && cd defog 		
+	
+	# delete temporary files
+	test $run_delete && delete_utility
+	
+	# remove all folders and assign the relevant privileges
+	rm results.txt 2>/dev/null
+	rm -rf dir assets && mkdir assets && chmod 777 assets
+	rm -rf dir results && mkdir results && chmod 777 results
+	rm -rf dir configs && mkdir configs && chmod 777 configs
+	
+	echo -e
+}
+
+# actions.sh main, test for the current pipeline and invoke the relevant functions. Move the results files to the results folder
+function main {
+	run_setup
+	
+	# remove_docker_containers
+	test $run_remove_containers && remove_docker_containers
+			
+	# run actions on the corresponding pipeline utility function		
+	test $run_cloud && bench
+    test $run_edge && bench
+	test $run_both_cloud && benchcloudinstance
+    test $run_both_edge && benchedgeinstance
+	
+	# move the results file to the results folder
+	mv $filename.txt results/results.txt
+}
+
+# accept user input passed by defog.sh script
+while getopts :cebz:adfsxluhngs:yijpmk opt; do
+    case "$opt" in
+        a)
+            run_downloads=true
+		    run_unixbench=true
+			run_sysbench=true
+			run_simple=true
+            ;;
+		c)
+			run_cloud=true
+			;;
+		b)
+			run_both_edge=true
+			;;
+		e)
+			run_edge=true
+			;;
+        d)
+            run_downloads=true
+            ;;
+        f)
+            run_lfile=true
+            ;;
+		s) 	
+			run_sysbench=true
+			;;
+        x)
+            run_delete=true
+            ;;
+		v)	
+			run_remove_containers=true
+			;;
+		u)
+            run_unixbench=true
+            ;;
+		g)	
+			run_simple=true
+			;;
+		n)
+			do_nothing=true
+			;;	
+		z)
+			run_both_cloud=true
+			;;
+		i)	
+			build_ipokemon=true
+			run_ipokemon=true
+			;;
+		j)	
+			run_aeneas=true
+			;;	
+		l)	
+			run_foglamp=true
+			;;		
+		k)	
+			run_ipokemon=true
+			;;	
+		p)	
+			run_psphinx=true
+			;;	
+		y)
+            run_yolo=true
+            ;;	
+		m)
+			;;
+    esac
+done
+
+main

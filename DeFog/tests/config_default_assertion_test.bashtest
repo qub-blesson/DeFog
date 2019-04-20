@@ -1,0 +1,34 @@
+# Test the config file has the default correct values
+# to run all bash tests, ensure bashtest and grep dependencies are installed 
+# $ bashtest *.bashtest
+
+$ grep -F "cloudaddress=\"ec2-XXX\"" ../configs/config.sh > /dev/null && echo "YES"
+YES
+
+$ grep -F "clouduser=\"ubuntu\"" ../configs/config.sh > /dev/null && echo "YES"
+YES
+
+$ grep -F "cloudpublicip=XX.XXX.XX.XXX" ../configs/config.sh > /dev/null && echo "YES"
+YES
+
+$ grep -F "edgeaddress1=XXX.XXX.X.XX" ../configs/config.sh > /dev/null && echo "YES"
+YES
+
+$ grep -F "edgeuser1=root" ../configs/config.sh > /dev/null && echo "YES"
+YES
+
+$ grep -F "edgeaddress2=XXX.XXX.X.XX" ../configs/config.sh > /dev/null && echo "YES"
+YES
+
+$ grep -F "edgeuser2=root" ../configs/config.sh > /dev/null && echo "YES"
+YES
+
+$ grep -F "awskey=~/Documents/configs/emptyawskey.pem" ../configs/config.sh > /dev/null && echo "YES"
+YES
+
+$ grep -F "edgeawskey=/mnt/configs/emptyawskey.pem" ../configs/config.sh > /dev/null && echo "YES"
+YES
+
+$ grep -F "foglampaddress=\"http://localhost:8081\"" ../configs/config.sh > /dev/null && echo "YES"
+YES
+

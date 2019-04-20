@@ -1,0 +1,4 @@
+App iPokeMon1
+Ports 6379 8000
+Priority 1
+Objective 80

@@ -1,0 +1,1 @@
+curl -s $1/foglamp/audit?limit=40
