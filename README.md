@@ -35,6 +35,15 @@ aws_secret_access_key = YYYY
 * Update the .ssh folder with the devices id_rsa and id_rsa.pub ssh keys
 Creating a ssh key documentation: ```https://docs.joyent.com/public-cloud/getting-started/ssh-keys/generating-an-ssh-key-manually/manually-generating-your-ssh-key-in-windows```
 
+If an issue us thrown regarding '\r' line endings, this is due to GitLab automatically converting line endings LF to CRLF. The line endings should be Unix (LF), consult git documentation to update the local git attributes to ensure the correct line endings are used. Additionally ensure a .git attributes file is present at the repository root with the following content:
+```
+* text=auto
+*.txt text
+*.c text
+*.h text
+*.jpg binary
+```
+
 If an error is thrown when connecting to the Cloud instance this is likely due to the .aws folder's contents not being set up correctly, ensure the IAM user created has the necessary priviliges/authentication to remotely access the EC2 instance and the keys are added in the format above. If the issue persists then it may be benefical to consult the AWS documentation regarding remotely accessing an EC2, as this will outline the individual steps required to set up the .aws folder.
 
 If an issue is thrown when using secure shell to connect to the Edge or Cloud, then ensure the .ssh folder has been set up correctly. This should contain the public and private ssh keys generated. Authorized keys and known_hosts will be populated to this folder over time.
