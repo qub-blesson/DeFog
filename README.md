@@ -8,10 +8,28 @@ navigate to the DeFog folder:
 ### How to View Help
 navigate to the DeFog folder:
 ```$ sh defog -?```
+* view the help video for further information regardings setting up the .ssh and .aws folders, as well as JMeter and Taurus integration.
+
+### How to run iPokeMon JMeter
+* First build the docker image and container, use `$ . enter` to manually enter the container
+* Navigate to the Cloud-Server using `$ cd Experiments/iPokeMon/ipokemon/Application/iPokeMon-CloudServer/`
+* Start up the server `$ . runCloud.sh`, and use `crtl-c` to return from console output
+* Enter `ctrl-p and ctrl-q` to detach container
+exit back to the user device
 
 ### User Device Dependencies
 * Install 'bc'
 * Ensure the latest version of bash is installed
+* Install the latest version JMeter to the JMeter folder, a template structure is provided, but this may not be compatible with the edge devices local java version etc. Ensure the version of JMeter installed has the ApacheJMeter.jar within the bin folder. As of April 2019, the latest version of JMeter may not have the Jar file, use apache-jmeter-2-6 in this case. As such, the contents of this folder can be overwritten with the newest version of JMeter running Java 8.
+* Ensure JMeter user and system path/environment variables are set up (JAVA_HOME and PATH). Defog has been using `jdk1.8.0_101` and `jdk1.8.0_102`.
+```
+Include a JAVA_HOME path variable, with value C:\Program Files\Java\jdk1.8.0_181 (or the latest version of JAVA 8 jdk/jre)
+Append C:\Users\jmcch\AppData\Local\Taurus\bin, C:\Program Files (x86)\Common Files\Oracle\Java\javapath and C:\Program Files\Java\jdk1.8.0_181 to the system and user variables
+```
+
+If `Files/Java/jdk1.8.0_102/bin/java: No such file or directory` appears, this means the path/user variables are not set up correctly for JMeter, please consult the Apache JMeter documentation to fix this issue.
+
+* Install `Taurus` bzt
 * Update the configuration file (DeFog/configs/config.sh) is updated to the relevant values.
 Using root access allows elevated permissions, e.g. root@123.123.12 etc. Ensure DeFog can use SSH without prompting for user interaction, e.g. entering a password. If prompted to enter a password consult ssh password-less documentation. If its the first time use, the terminal may prompt to add the address to known hosts, which is populated in the user device (or edge nodes) .ssh folder.
 * Use putty to create a .pem file and update the awsemptykey.pem
