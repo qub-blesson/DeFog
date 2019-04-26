@@ -19,10 +19,10 @@
 #
 #########################################################################################################################
 
-# link local address to the config file
+# link local address to the config file - UPDATE condig.sh LOCATION
 source ~/Documents/configs/config.sh
 
-# create local variables of config variables
+# create local variables of config variables - Make sure to UPDATE the location of the configs
 cloudaddress=$cloudaddress
 clouduser=$clouduser
 edgeaddress1=$edgeaddress1

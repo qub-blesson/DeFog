@@ -16,7 +16,7 @@
 #########################################################################################################################
 
 
-# function to invoke help and FAQ command line output
+# function to invoke Help and FAQ command line output
 function executebenchmarkhelp {
 		./defogexecute -?
 }

@@ -15,7 +15,7 @@
 #
 #########################################################################################################################
 
-# run simple benchmarks for the current running platform to generate CPU, network and IO statistics
+# run simple benchmarks for the current platform to generate CPU, network and IO statistics
 function simple_benchmark {
 
     today=$(date +"%m/%d/%Y")
