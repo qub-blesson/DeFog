@@ -77,19 +77,19 @@ function which_program_cloud_split_pipeline {
 	then
 	
 		rm /mnt/assets/yolov3-tiny.weights 2>/dev/null
-		cd ~/Experiments/YOLO/bothcloudyolo
+		cd ~/YOLO/bothcloudyolo
 		mv ./yolov3-tiny.weights /mnt/assets/
 
 	elif [ "$application" == 1 ] # Pocket Sphinx
 	then
 		rm -rf /mnt/assets/en-us 2>/dev/null
-		cd ~/Experiments/PocketSphinx/bothcloudpsphinx
+		cd ~/PocketSphinx/bothcloudpsphinx
 		mv ./en-us /mnt/assets/
 
 	elif [ "$application" == 2 ] # Aeneas
 	then
 		rm -rf /mnt/assets/aeneas-assets/ 2>/dev/null
-		cd ~/Experiments/Aeneas/bothcloudaeneas
+		cd ~/Aeneas/bothcloudaeneas
 		mv ./aeneas-assets/ /mnt/assets/
 	fi
 }
@@ -107,7 +107,7 @@ function which_program_edge_split_pipeline {
 		predictions=predictions.png
 		returned_predictions=./returnedasset.png
 		
-		pathToApplication=~/Experiments/YOLO/yolo
+		pathToApplication=~/YOLO/yolo
 		
 		executeApplication="./darknet detect cfg/yolov3-tiny.cfg yolov3-tiny.weights /mnt/assets/yoloimage.jpg"
 
@@ -119,10 +119,10 @@ function which_program_edge_split_pipeline {
 		predictions=result.txt
 		returned_predictions=./returnedasset.txt
 		
-		cd ~/Experiments/PocketSphinx/sphinxbase/
+		cd ~/PocketSphinx/sphinxbase/
 		export LD_LIBRARY_PATH=/usr/local/lib
 		
-		pathToApplication=~/Experiments/PocketSphinx/sphinxbase/pocketsphinx/
+		pathToApplication=~/PocketSphinx/sphinxbase/pocketsphinx/
 		
 		executeApplication="pocketsphinx_continuous -infile /mnt/assets/psphinx.wav -logfn /dev/null"
 		
@@ -134,16 +134,16 @@ function which_program_edge_split_pipeline {
 		predictions=map.smil
 		returned_predictions=./returnedasset.smil
 		
-		cd ~/Experiments/Aeneas/aeneas
+		cd ~/Aeneas/aeneas
 		export PYTHONIOENCODING=UTF-8 # necessary to ensure the correct encoding standard is used
 		
-		pathToApplication=~/Experiments/Aeneas/aeneas
+		pathToApplication=~/Aeneas/aeneas
 		
 		file=$( cat /mnt/assets/aeneas.txt )
 		new_file="${file%%.*}"
 		
 		local conf="task_language=eng|os_task_file_format=smil|os_task_file_smil_audio_ref=audio.mp3|os_task_file_smil_page_ref=page.xhtml|is_text_type=unparsed|is_text_unparsed_id_regex=f[0-9]+|is_text_unparsed_id_sort=numeric"
-		executeApplication="python -m aeneas.tools.execute_task     /mnt/assets/aeneasaudio.mp3     /mnt/assets/aeneastext.xhtml     ${conf}     map.smil"
+		executeApplication="python -m aeneas.tools.execute_task     /mnt/assets/aeneasaudio.mp3     $new_file.xhtml     ${conf}     map.smil"
 	fi
 }
 
@@ -160,7 +160,7 @@ function which_program_only_pipelines {
 		predictions=predictions.png
 		returned_predictions=./returnedasset.png
 		
-		pathToApplication=~/Experiments/YOLO/yolo
+		pathToApplication=~/YOLO/yolo
 		
 		executeApplication="./darknet detect cfg/yolov3-tiny.cfg yolov3-tiny.weights /mnt/assets/yoloimage.jpg"
 
@@ -172,10 +172,10 @@ function which_program_only_pipelines {
 		predictions=result.txt
 		returned_predictions=./returnedasset.txt
 		
-		cd ~/Experiments/PocketSphinx/sphinxbase/
+		cd ~/PocketSphinx/sphinxbase/
 		export LD_LIBRARY_PATH=/usr/local/lib
 		
-		pathToApplication=~/Experiments/PocketSphinx/sphinxbase/pocketsphinx/
+		pathToApplication=~/PocketSphinx/sphinxbase/pocketsphinx/
 		
 		executeApplication="pocketsphinx_continuous -infile /mnt/assets/psphinx.wav -logfn /dev/null"
 		
@@ -187,10 +187,10 @@ function which_program_only_pipelines {
 		predictions=map.smil
 		returned_predictions=./returnedasset.smil
 		
-		cd ~/Experiments/Aeneas/aeneas
+		cd ~/Aeneas/aeneas
 		export PYTHONIOENCODING=UTF-8 # ensure correct encoding standards are used
 		
-		pathToApplication=~/Experiments/Aeneas/aeneas
+		pathToApplication=~/Aeneas/aeneas
 		
 		local conf="task_language=eng|os_task_file_format=smil|os_task_file_smil_audio_ref=audio.mp3|os_task_file_smil_page_ref=page.xhtml|is_text_type=unparsed|is_text_unparsed_id_regex=f[0-9]+|is_text_unparsed_id_sort=numeric"
 		executeApplication="python -m aeneas.tools.execute_task     /mnt/assets/aeneasaudio.mp3     /mnt/assets/aeneastext.xhtml     ${conf}     map.smil"

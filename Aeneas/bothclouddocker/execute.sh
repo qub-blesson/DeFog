@@ -143,7 +143,7 @@ function which_program_edge_split_pipeline {
 		new_file="${file%%.*}"
 		
 		local conf="task_language=eng|os_task_file_format=smil|os_task_file_smil_audio_ref=audio.mp3|os_task_file_smil_page_ref=page.xhtml|is_text_type=unparsed|is_text_unparsed_id_regex=f[0-9]+|is_text_unparsed_id_sort=numeric"
-		executeApplication="python -m aeneas.tools.execute_task     /mnt/assets/aeneasaudio.mp3     /mnt/assets/aeneastext.xhtml     ${conf}     map.smil"
+		executeApplication="python -m aeneas.tools.execute_task     /mnt/assets/aeneasaudio.mp3     $new_file.xhtml     ${conf}     map.smil"
 	fi
 }
 
