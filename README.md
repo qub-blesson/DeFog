@@ -35,7 +35,7 @@ aws_secret_access_key = YYYY
 * Update the .ssh folder with the devices id_rsa and id_rsa.pub ssh keys
 Creating a ssh key documentation: ```https://docs.joyent.com/public-cloud/getting-started/ssh-keys/generating-an-ssh-key-manually/manually-generating-your-ssh-key-in-windows```
 
-If an issue us thrown regarding '\r' line endings, this is due to GitLab automatically converting line endings LF to CRLF. The line endings should be Unix (LF), consult git documentation to update the local git attributes to ensure the correct line endings are used. Additionally ensure a .git attributes file is present at the repository root with the following content:
+If an issue us thrown regarding '\r' line endings, this is due to GitLab automatically converting line endings LF to CRLF, this can mitigated by updating the config: `$ git config --global core.eol lf`. The line endings should be Unix (LF) format, consult git documentation to update the local git attributes to ensure the correct line endings are used.
 ```
 * text=auto
 *.txt text
