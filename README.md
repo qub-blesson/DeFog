@@ -1,6 +1,5 @@
-# DeFog: 
-## Fog Computing Benchmarks
-### Demystifying Cloud-Edge Interactions of a Fog System Using Container-based Benchmarking
+# DeFog: Fog Computing Benchmarks
+## Demystifying Cloud-Edge Interactions of a Fog System Using Container-based Benchmarking
 
 ### How to Run
 navigate to the DeFog folder:
