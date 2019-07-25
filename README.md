@@ -1,6 +1,11 @@
 # DeFog: Fog Computing Benchmarks
 ## Demystifying Cloud-Edge Interactions of a Fog System Using Container-based Benchmarking
 
+### Citing this Research
+Jonathan McChesney, Nan Wang, Ashish Tanwer, Eyal de Lara, and Blesson Varghese, "DeFog: Fog Computing Benchmarks," ACM/IEEE Symposium on Edge Computing, 2019. 
+
+Link to PDF: http://bvarghese.staff.cs.qub.ac.uk/papers/DeFog-SEC2019.pdf.
+
 ### How to Run
 navigate to the DeFog folder:
 ```$ sh defog .```
